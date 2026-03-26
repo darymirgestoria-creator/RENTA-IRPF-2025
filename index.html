@@ -1253,9 +1253,12 @@ function updateProgress() {
   document.getElementById('pb').style.width = pct + '%';
 }
 
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzwqbljZ6ky3R9CqPgRWaoGnnHD3lg2_V2-GQOmyuYI-A5HwpDbZxghzQhl7p9oFuLM/exec';
+
 function submitForm() {
   const form = document.getElementById('pf-' + curP);
   const lines = ['=== ' + pNames[curP] + ' — RENTA 2025 ===', ''];
+  const data = { provincia: pNames[curP], fecha: new Date().toLocaleString('ru') };
   const seen = {};
   form.querySelectorAll('input[type="radio"]:checked').forEach(inp => {
     if (seen[inp.name]) return;
@@ -1263,10 +1266,37 @@ function submitForm() {
     const qg = inp.closest('.qrow');
     const lbl = qg ? (qg.querySelector('.qlabel')?.textContent?.trim().replace(/^\d+/, '').trim() || inp.name) : inp.name;
     lines.push('• ' + lbl + ': ' + inp.value);
+    data[lbl] = inp.value;
   });
   form.querySelectorAll('[data-q]').forEach(inp => {
-    if (inp.value.trim()) lines.push('  ' + inp.getAttribute('data-q') + ': ' + inp.value.trim());
+    if (inp.value.trim()) {
+      lines.push('  ' + inp.getAttribute('data-q') + ': ' + inp.value.trim());
+      data[inp.getAttribute('data-q')] = inp.value.trim();
+    }
   });
+
+  // Send to Google Sheets
+  const btn = document.querySelector('.submit-btn');
+  btn.textContent = '⏳ Отправляем...';
+  btn.disabled = true;
+  fetch(SCRIPT_URL, {
+    method: 'POST',
+    mode: 'no-cors',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  }).then(() => {
+    btn.textContent = '✅ Данные отправлены!';
+    btn.style.background = 'var(--green)';
+    setTimeout(() => {
+      btn.textContent = '📋 Сформировать сводку ответов';
+      btn.style.background = '';
+      btn.disabled = false;
+    }, 3000);
+  }).catch(() => {
+    btn.textContent = '📋 Сформировать сводку ответов';
+    btn.disabled = false;
+  });
+
   const panel = document.getElementById('resultPanel');
   const content = document.getElementById('resultContent');
   content.innerHTML = lines.map(l => {
